@@ -1,4 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+// How to add types to this component:
+// 1. Convert the file to TypeScript by renaming it to Movie.tsx.
+// 2. Define interfaces for the Movie object and MovieForm.
+// 3. Type the useState hooks and function parameters.
+
+import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Header from "./global/Header";
 import Footer from "./global/Footer";
@@ -9,17 +14,42 @@ const inputClass =
   "mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-950/10 disabled:bg-zinc-50 disabled:text-zinc-500";
 
 const labelClass = "text-xs font-medium uppercase tracking-wide text-zinc-500";
-
 const fieldClass = "space-y-1";
 
+interface MovieType {
+  id?: number;
+  titre?: string;
+  date_sortie?: string;
+  genre?: string;
+  pays_origine?: string;
+  distributeur?: string;
+  duree_minutes?: number | string;
+  nombre_entrees?: number | string;
+  recettes_totales?: number | string;
+  note_presse?: number | string;
+}
+
+interface MovieFormType {
+  titre: string;
+  date_sortie: string;
+  genre: string;
+  pays_origine: string;
+  distributeur: string;
+  duree_minutes: number | string;
+  nombre_entrees: number | string;
+  recettes_totales: number | string;
+  note_presse: number | string;
+}
+
+
 const Movie = () => {
-  const { id } = useParams();
-  const [movie, setMovie] = useState({});
-  const [allMovies, setAllMovies] = useState([]);
-  const [isEditing, setIsEditing] = useState(false);
-  const [form, setForm] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const { id } = useParams<{ id: string }>();
+  const [movie, setMovie] = useState<MovieType>({});
+  const [similarMovies, setSimilarMovies] = useState<MovieType[]>([]);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [form, setForm] = useState<MovieFormType | null>(null);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [deleting, setDeleting] = useState<boolean>(false);
   const navigate = useNavigate();
 
   const getMovie = async () => {
@@ -30,53 +60,24 @@ const Movie = () => {
         return;
       }
       setMovie(response.data);
-    } catch (error) {
+    } catch (error: any) {
       toast(error.message || "An error occured");
       return;
     }
   };
 
-  const getAllMovies = async () => {
+  const getRecommendations = async () => {
+    if (!id) return;
     try {
-      const response = await API.get("movies");
+      const response = await API.get(`movie/${id}/recommendations`);
       if (!response.ok) {
-        toast.error(
-          response.message ?? response.error ?? "Failed to get movies",
-        );
         return;
       }
-      setAllMovies(response.data);
+      setSimilarMovies(response.data ?? []);
     } catch (error) {
       console.log(error);
-      toast.error("Failed to get movies");
     }
   };
-
-  function getSimilarMovies(current, allMovies) {
-    let pool = allMovies.filter(m => m.id !== current.id && m.genre === current.genre);
-    if (pool.length < 3) {
-      pool = allMovies.filter(m => m.id !== current.id);
-    }
-    if (pool.length === 0) return [];
-
-    const maxRecettes = Math.max(...pool.map(m => m.recettes_totales));
-    const maxRating = Math.max(...pool.map(m => m.note_presse));
-  
-    const scored = pool.map(movie => {
-      const recettesDiff = Math.abs(movie.recettes_totales - current.recettes_totales) / maxRecettes;
-      const ratingDiff = Math.abs(movie.note_presse - current.note_presse) / maxRating;
-  
-      // lower diff = more similar = higher score
-      const similarity = 1 - (recettesDiff * 0.5 + ratingDiff * 0.5);
-  
-      return { movie, similarity };
-    });
-  
-    return scored
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, 3)
-      .map(s => s.movie);
-  }
 
   const edit = () => {
     setIsEditing(true);
@@ -110,14 +111,14 @@ const Movie = () => {
       }
       toast.success("Movie deleted");
       navigate("/", { replace: true });
-    } catch (error) {
+    } catch (error: any) {
       toast.error(error?.message || "An error occurred");
     } finally {
       setDeleting(false);
     }
   };
 
-  const save = async (e) => {
+  const save = async (e: FormEvent) => {
     e?.preventDefault?.();
     if (!form || !id) return;
     setSaving(true);
@@ -146,8 +147,9 @@ const Movie = () => {
       setMovie(response.data);
       setIsEditing(false);
       setForm(null);
+      await getRecommendations();
       toast.success("Movie updated successfully");
-    } catch (error) {
+    } catch (error: any) {
       toast.error(error?.message || "An error occured");
     } finally {
       setSaving(false);
@@ -159,22 +161,18 @@ const Movie = () => {
     setIsEditing(false);
   };
 
-  const handleFormChange = (e) => {
+  const handleFormChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({
-      ...prev,
+      ...prev!,
       [name]: value,
     }));
   };
 
-  const similarMovies = useMemo(() => {
-    if (!movie?.id || !allMovies.length) return [];
-    return getSimilarMovies(movie, allMovies);
-  }, [movie, allMovies]);
-
   useEffect(() => {
     getMovie();
-    getAllMovies();
+    getRecommendations();
+    // eslint-disable-next-line
   }, [id]);
 
   return (
@@ -380,7 +378,7 @@ const Movie = () => {
               <div className="px-6 py-2">
                 {movie.id ? (
                   <dl className="divide-y divide-zinc-100">
-                    {[
+                    {([
                       ["Date de sortie", movie.date_sortie],
                       ["Pays d'origine", movie.pays_origine],
                       ["Distributeur", movie.distributeur],
@@ -408,7 +406,7 @@ const Movie = () => {
                           ? `${movie.note_presse} / 10`
                           : "—",
                       ],
-                    ].map(([label, value]) => (
+                    ] as [string, string | number | undefined][]).map(([label, value]) => (
                       <div
                         key={label}
                         className="grid grid-cols-1 gap-1 py-4 sm:grid-cols-3 sm:gap-4 sm:py-3"

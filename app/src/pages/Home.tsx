@@ -45,6 +45,18 @@ type GenreAgg = {
   notePresseMoyenne: number;
 };
 
+type Movie = {
+  titre: string;
+  date_sortie: string;
+  genre: string;
+  recettes_totales: number;
+  nombre_entrees: number;
+  pays_origine: string;
+  distributeur: string;
+  duree_minutes: number;
+  note_presse: number;
+}
+
 const Home = () => {
   const navigate = useNavigate();
   const [movies, setMovies] = useState<any[]>([]);
@@ -60,17 +72,7 @@ const Home = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createForm, setCreateForm] = useState(emptyCreateForm);
 
-  const createMovie = async (movie: {
-    titre: string;
-    date_sortie: string;
-    genre: string;
-    recettes_totales: number;
-    nombre_entrees: number;
-    pays_origine: string;
-    distributeur: string;
-    duree_minutes: number;
-    note_presse: number;
-  }) => {
+  const createMovie = async (movie: Movie) => {
     try {
       const res = await API.post("movie", movie);
       if (!res.ok) {
@@ -105,14 +107,13 @@ const Home = () => {
       setMovies(response.data);
       setAllMovies(response.data);
     } catch (error) {
-      console.log(error);
       toast.error("Failed to get movies");
     }
   };
 
   const filterGenres = (filterGenre: string) => {
     const filteredMovies = allMovies.filter(
-      (movie: any) => filterGenre == "-" ? movie.genre === null : movie.genre == filterGenre
+      (movie: any) => filterGenre === "-" ? movie.genre === null : movie.genre === filterGenre
     );
     setMovies(filteredMovies);
     setSelectedGenre(filterGenre);
@@ -242,8 +243,7 @@ const Home = () => {
                 New movie
               </h2>
               <p className="mt-1 text-sm text-zinc-500">
-                Fill in the details below. Submit logs the payload to the
-                console for now.
+                Fill in the movie details below.
               </p>
               <form onSubmit={handleCreateSubmit} className="mt-6 space-y-4">
                 <div className={fieldClass}>

@@ -1,9 +1,9 @@
-import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
 import Home from './pages/Home';
 import Movie from './pages/Movie';
+import NotFound from './pages/NotFound';
 import './App.css';
 
 function App() {
@@ -14,7 +14,7 @@ function App() {
       <Routes>
         <Route path='/' element={<Home />} />
         <Route path='/movie/:id' element={<Movie />} />
-        {/* <Route path="*" element={<NotFoundPage />} /> */}
+        <Route path="*" element={<NotFound />} />
 
       </Routes>
 

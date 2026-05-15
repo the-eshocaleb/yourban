@@ -1,11 +1,10 @@
-const API_URL = process.env.REACT_APP_API_URL;
-console.log(API_URL);
-
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080/";
 export interface ApiResponse<T = any> {
   ok: boolean;
   data?: T;
   message?: string;
   error?: string;
+  errors?: string[];
 }
 
 class ApiService {
