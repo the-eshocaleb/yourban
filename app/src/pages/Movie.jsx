@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Header from "./global/Header";
 import Footer from "./global/Footer";
@@ -15,6 +15,7 @@ const fieldClass = "space-y-1";
 const Movie = () => {
   const { id } = useParams();
   const [movie, setMovie] = useState({});
+  const [allMovies, setAllMovies] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -34,6 +35,48 @@ const Movie = () => {
       return;
     }
   };
+
+  const getAllMovies = async () => {
+    try {
+      const response = await API.get("movies");
+      if (!response.ok) {
+        toast.error(
+          response.message ?? response.error ?? "Failed to get movies",
+        );
+        return;
+      }
+      setAllMovies(response.data);
+    } catch (error) {
+      console.log(error);
+      toast.error("Failed to get movies");
+    }
+  };
+
+  function getSimilarMovies(current, allMovies) {
+    let pool = allMovies.filter(m => m.id !== current.id && m.genre === current.genre);
+    if (pool.length < 3) {
+      pool = allMovies.filter(m => m.id !== current.id);
+    }
+    if (pool.length === 0) return [];
+
+    const maxRecettes = Math.max(...pool.map(m => m.recettes_totales));
+    const maxRating = Math.max(...pool.map(m => m.note_presse));
+  
+    const scored = pool.map(movie => {
+      const recettesDiff = Math.abs(movie.recettes_totales - current.recettes_totales) / maxRecettes;
+      const ratingDiff = Math.abs(movie.note_presse - current.note_presse) / maxRating;
+  
+      // lower diff = more similar = higher score
+      const similarity = 1 - (recettesDiff * 0.5 + ratingDiff * 0.5);
+  
+      return { movie, similarity };
+    });
+  
+    return scored
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, 3)
+      .map(s => s.movie);
+  }
 
   const edit = () => {
     setIsEditing(true);
@@ -124,8 +167,14 @@ const Movie = () => {
     }));
   };
 
+  const similarMovies = useMemo(() => {
+    if (!movie?.id || !allMovies.length) return [];
+    return getSimilarMovies(movie, allMovies);
+  }, [movie, allMovies]);
+
   useEffect(() => {
     getMovie();
+    getAllMovies();
   }, [id]);
 
   return (
@@ -382,14 +431,42 @@ const Movie = () => {
             </article>
           )}
 
-          <section className="rounded-xl border border-dashed border-zinc-200 bg-zinc-50/50 px-6 py-8 text-center">
-            <p className="text-sm font-medium text-zinc-600">
-              You may also like
-            </p>
-            <p className="mt-1 text-xs text-zinc-400">
-              Recommendations coming soon.
-            </p>
-          </section>
+          {!isEditing && (
+            <section className="rounded-xl border border-zinc-200 bg-white shadow-sm">
+              <div className="border-b border-zinc-100 bg-zinc-50/80 px-6 py-5">
+                <h2 className="text-lg font-semibold tracking-tight text-zinc-900">
+                  You may also like
+                </h2>
+              </div>
+              <div className="px-6 py-2">
+                {similarMovies.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-zinc-500">
+                    No similar movies to show.
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-zinc-100">
+                    {similarMovies.map((m) => (
+                      <li key={m.id}>
+                        <Link
+                          to={`/movie/${m.id}`}
+                          className="-mx-2 block rounded-lg px-2 py-4 transition hover:bg-zinc-50"
+                        >
+                          <span className="font-medium text-zinc-900">
+                            {m.titre}
+                          </span>
+                          {m.genre ? (
+                            <span className="mt-0.5 block text-sm text-zinc-500">
+                              {m.genre}
+                            </span>
+                          ) : null}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
+          )}
         </div>
       </main>
 

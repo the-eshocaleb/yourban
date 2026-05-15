@@ -2398,17 +2398,5 @@
     "distributeur": "Gaumont",
     "duree_minutes": 98,
     "note_presse": 4.7
-  },
-  {
-    "id": 201,
-    "titre": "George of the Jungle",
-    "date_sortie": "2025-01-01",
-    "genre": "Action",
-    "recettes_totales": 87563200,
-    "nombre_entrees": 54321,
-    "pays_origine": "Etats- Unis",
-    "distributeur": "Netflix",
-    "duree_minutes": 120,
-    "note_presse": 8
   }
 ]

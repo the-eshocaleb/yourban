@@ -3,6 +3,15 @@ import Header from "./global/Header";
 import Footer from "./global/Footer";
 import toast from "react-hot-toast";
 import API from "../services/api";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { useNavigate } from "react-router-dom";
 
 const sectionLabel =
@@ -16,6 +25,8 @@ const inputClass =
 
 const fieldClass = "space-y-1";
 
+
+
 const emptyCreateForm = () => ({
   titre: "",
   date_sortie: "",
@@ -27,6 +38,12 @@ const emptyCreateForm = () => ({
   recettes_totales: "",
   note_presse: "",
 });
+
+type GenreAgg = {
+  nombreDeFilms: number;
+  recettesTotales: number;
+  notePresseMoyenne: number;
+};
 
 const Home = () => {
   const navigate = useNavigate();
@@ -134,9 +151,38 @@ const Home = () => {
     0
   );
 
+
+
   useEffect(() => {
     getMovies();
   }, []);
+
+
+  const statsByGenre = allMovies.reduce<Record<string, GenreAgg>>((acc, movie) => {
+    const genre = String(movie.genre);
+
+    if (!acc[genre]) {
+      acc[genre] = { nombreDeFilms: 0, recettesTotales: 0, notePresseMoyenne: 0 };
+    }
+
+    acc[genre].nombreDeFilms += 1;
+    acc[genre].recettesTotales += movie.recettes_totales;
+    acc[genre].notePresseMoyenne += movie.note_presse;
+
+    return acc;
+  }, {});
+
+  Object.keys(statsByGenre).forEach(genre => {
+    const stat = statsByGenre[genre]
+    stat.notePresseMoyenne = stat.notePresseMoyenne / stat.nombreDeFilms
+  });
+
+  const chartData = Object.entries(statsByGenre).map(([genre, stats]) => ({
+    genre: genre === "null" || genre === "" ? "—" : genre ?? "—",
+    films: stats.nombreDeFilms,
+    revenue: stats.recettesTotales,
+    score: Number(stats.notePresseMoyenne.toFixed(1)),
+  }));
 
   const handleCreateFieldChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -392,6 +438,124 @@ const Home = () => {
               >
                 Reset
               </button>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-zinc-900">By genre</h2>
+            <p className="mt-1 text-xs text-zinc-500">
+              Film count, gross, and avg. press score per genre.
+            </p>
+            <div className="mt-4 h-[320px] w-full min-w-0">
+              {chartData.length === 0 ? (
+                <p className="text-sm text-zinc-500">No data yet.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={chartData}
+                    margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
+                    <XAxis
+                      dataKey="genre"
+                      tick={{ fontSize: 11 }}
+                      interval={0}
+                      angle={-25}
+                      textAnchor="end"
+                      height={56}
+                    />
+                    <YAxis
+                      yAxisId="left"
+                      tick={{ fontSize: 11 }}
+                      allowDecimals={false}
+                      width={36}
+                    />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v) =>
+                        v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${(v / 1e3).toFixed(0)}k`
+                      }
+                      width={44}
+                    />
+                    <YAxis
+                      yAxisId="score"
+                      orientation="right"
+                      tick={{ fontSize: 11 }}
+                      domain={[0, 10]}
+                      width={38}
+                      axisLine={false}
+                      tickLine={false}
+                      style={{ color: "#f5c518" }}
+                      tickFormatter={(v) => v.toFixed(1)}
+                      label={{
+                        value: "Score",
+                        angle: -90,
+                        offset: 10,
+                        position: "insideRight",
+                        style: { textAnchor: "middle", fill: "#f5c518", fontSize: 10 }
+                      }}
+                    />
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload?.length) return null;
+                        // Find the bar with each dataKey, in case order changes
+                        const row = payload[0].payload as {
+                          films: number;
+                          revenue: number;
+                          score: number;
+                        };
+                        return (
+                          <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs shadow-md">
+                            <p className="font-medium text-zinc-900">{label}</p>
+                            <p className="mt-1 text-zinc-600">
+                              Films:{" "}
+                              <span className="font-medium text-zinc-900">
+                                {row.films}
+                              </span>
+                            </p>
+                            <p className="text-zinc-600">
+                              Recettes:{" "}
+                              <span className="font-medium text-zinc-900">
+                                {row.revenue.toLocaleString()} €
+                              </span>
+                            </p>
+                            <p className="text-zinc-600">
+                              Note presse (moy.):{" "}
+                              <span className="font-medium text-zinc-900">
+                                {row.score}
+                              </span>
+                            </p>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Bar
+                      yAxisId="left"
+                      dataKey="films"
+                      name="Films"
+                      fill="#52525b"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      yAxisId="right"
+                      dataKey="revenue"
+                      name="Recettes (€)"
+                      fill="#a1a1aa"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      yAxisId="score"
+                      dataKey="score"
+                      name="Note presse (moy.)"
+                      fill="#f5c518"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={16}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </section>
 
