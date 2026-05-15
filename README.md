@@ -1,6 +1,6 @@
 # Yourban
 
-A full-stack movie catalogue for browsing, filtering, and managing French box-office titles. The app ships with a seeded dataset of **200 films** and provides CRUD operations, analytics on the home page, and a client-side recommendation engine on the movie detail page.
+A full-stack movie catalogue for browsing, filtering, and managing French box-office titles. The app ships with a seeded dataset of **200 films** and provides CRUD operations, analytics on the home page, and a recommendation system on the movie detail page.
 
 ## Table of contents
 
